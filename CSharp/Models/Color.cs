@@ -1,6 +1,6 @@
 ﻿namespace CSharp.Models;
 
-public record struct Color(int r, int g, int b, int a)
+public record Color(int r, int g, int b, int a)
 {
     private byte? colorIndex = null;
     public byte ColorIndex
