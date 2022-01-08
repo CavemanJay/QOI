@@ -1,6 +1,6 @@
 import itertools
 import struct
-from typing import Any, Callable, List
+from typing import List
 
 from qoi.constants import *
 from qoi.models import Color
@@ -23,10 +23,7 @@ with open("assets/monument.bin", "rb") as f:
 #     reference = f.read(14)
 
 color_channels = 4
-# input_pixels2 = [
-#     Color(*input_bytes[i : i + color_channels])
-#     for i in range(0, len(input_bytes), color_channels)
-# ]
+# TODO: Use pure generators rather than creating an entire list
 input_pixels = [
     Color(*input_bytes[i : i + color_channels])
     for i in range(0, len(input_bytes), color_channels)
@@ -36,15 +33,15 @@ image_width = 735
 image_height = 588
 
 
-def takewhile_from_index(predicate: Callable, lst: List[Any], index: int = 0):
+def get_run_length(pixels: List[Color], prev_color: Color, index: int):
     i = index
-    l = len(lst)
+    c = 0
     while True:
-        if predicate(lst[i]):
-            yield lst[i]
+        if pixels[i] == prev_color:
             i += 1
+            c += 1
         else:
-            break
+            return c
 
 
 def encode():
@@ -56,8 +53,8 @@ def encode():
     i = 0
     while i < len(input_pixels):
         # Run check
-        run = list(takewhile_from_index(lambda x: x == prev_color, input_pixels, i))
-        run_length = min(62,len(run))
+        run = get_run_length(input_pixels, prev_color, i)
+        run_length = min(62, run)
         if run:
             i += run_length
             yield ops.Run(run_length)
@@ -111,20 +108,7 @@ def encode():
 
 
 with open("output.qoi", "wb") as f:
-    # header_bytes = QOI_HEADER_STRUCT.pack(
-    #     QOI_MAGIC_BYTES, image_width, image_height, 4, 1
-    # )
-    # f.write(header_bytes)
-    # # f.write(header_bytes)
-    # f.write(QOI_END_MARKER)
-    # bytes = list(encode())
-    # result = bytearray()
     for bytes in encode():
         f.write(bytes)
-        f.flush()
-        print()
-        # result+=byte
 
-    # f.write(result)
-    print()
 # print()
