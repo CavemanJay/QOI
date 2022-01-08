@@ -1,12 +1,11 @@
-import itertools
+import heartrate
 import struct
-from typing import List
+from typing import Iterable, List
 
 from qoi.constants import *
 from qoi.models import Color
 from qoi.models.luma import LumaDiff
 import qoi.operations as ops
-
 
 def to_int32_bytes(value: int) -> bytes:
     return struct.pack("I", value)
@@ -24,10 +23,10 @@ with open("assets/monument.bin", "rb") as f:
 
 color_channels = 4
 # TODO: Use pure generators rather than creating an entire list
-input_pixels = [
+input_pixels = list(
     Color(*input_bytes[i : i + color_channels])
     for i in range(0, len(input_bytes), color_channels)
-]
+)
 
 image_width = 735
 image_height = 588
@@ -44,17 +43,32 @@ def get_run_length(pixels: List[Color], prev_color: Color, index: int):
             return c
 
 
+def get_run(colors: Iterable[Color], previous_color: Color):
+    count = 0
+    color = next(colors)
+    while count < QOI_RUN_MAX:
+        if color == previous_color:
+            count += 1
+            color = next(colors)
+        else:
+            return count, color
+
+    return count, color
+
+
+@profile
 def encode():
-    yield bytearray(
-        QOI_HEADER_STRUCT.pack(QOI_MAGIC_BYTES, image_width, image_height, 4, 1)
-    )
+    yield QOI_HEADER_STRUCT.pack(QOI_MAGIC_BYTES, image_width, image_height, 4, 1)
     seen_pixels = [Color(0, 0, 0, 0) for _ in range(64)]
     prev_color = QOI_FIRST_COLOR
     i = 0
     while i < len(input_pixels):
+    # while True:
         # Run check
         run = get_run_length(input_pixels, prev_color, i)
-        run_length = min(62, run)
+        # run, color = get_run(input_pixels, prev_color)
+
+        run_length = min(QOI_RUN_MAX, run)
         if run:
             i += run_length
             yield ops.Run(run_length)
