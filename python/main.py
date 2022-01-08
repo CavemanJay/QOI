@@ -42,51 +42,40 @@ def takewhile_from_index(predicate: Callable, lst: List[Any], index: int = 0):
     while True:
         if predicate(lst[i]):
             yield lst[i]
-            i+=1
+            i += 1
         else:
             break
 
 
 def encode():
-    yield bytearray(QOI_HEADER_STRUCT.pack(QOI_MAGIC_BYTES, image_width, image_height, 4, 1))
+    yield bytearray(
+        QOI_HEADER_STRUCT.pack(QOI_MAGIC_BYTES, image_width, image_height, 4, 1)
+    )
     seen_pixels = [Color(0, 0, 0, 0) for _ in range(64)]
     prev_color = QOI_FIRST_COLOR
-    # i = 0
-
-    # def inc(amount=1):
-    #     global input_pixels
-    #     # global i
-    #     # i += amount
-    #     input_pixels = input_pixels[amount:]
-
-    # while True:
-    # while input_pixels:
     i = 0
     while i < len(input_pixels):
         # Run check
-        # run = list(itertools.takewhile(lambda x: x == prev_color, input_pixels))
         run = list(takewhile_from_index(lambda x: x == prev_color, input_pixels, i))
+        run_length = min(62,len(run))
         if run:
-            run_length = len(run)
             i += run_length
-            # inc(run_length)
             yield ops.Run(run_length)
             continue
-        # color = next(input_pixels)
         color = input_pixels[i]
 
         # Index check
         if seen_pixels[color.index] == color:
             i += 1
-            # inc()
+            prev_color = color
             yield ops.Index(color.index)
             continue
 
         seen_pixels[color.index] = color
         # Alpha equality check
         if color.a != prev_color.a:
-            # inc()
-            i+=1
+            i += 1
+            prev_color = color
             yield ops.Rgba(color)
             continue
 
@@ -97,8 +86,8 @@ def encode():
             and diff.g in QOI_DIFF_RANGE
             and diff.b in QOI_DIFF_RANGE
         ):
-            # inc()
-            i+=1
+            i += 1
+            prev_color = color
             yield ops.Diff(diff)
             continue
 
@@ -109,15 +98,14 @@ def encode():
             and luma.dr_dg in QOI_LUMA_RB_RANGE
             and luma.db_dg in QOI_LUMA_RB_RANGE
         ):
-            # inc()
-            i+=1
+            i += 1
+            prev_color = color
             yield ops.Luma(luma)
             continue
 
         i += 1
-        # inc()
-        yield ops.Rgb(color)
         prev_color = color
+        yield ops.Rgb(color)
 
     yield QOI_END_MARKER
 
