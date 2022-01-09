@@ -1,19 +1,13 @@
 import itertools
+from os import PathLike
 import struct
 from typing import List
 
 from qoi.constants import *
+from qoi.exceptions import QoiHeaderError
 from qoi.models import Color
 from qoi.models.luma import LumaDiff
 import qoi.operations as ops
-
-
-def to_int32_bytes(value: int) -> bytes:
-    return struct.pack("I", value)
-
-
-def to_byte(value: int) -> bytes:
-    return struct.pack("B", value)
 
 
 with open("assets/monument.bin", "rb") as f:
@@ -42,6 +36,34 @@ def get_run_length(pixels: List[Color], prev_color: Color, index: int):
             c += 1
         else:
             return c
+
+
+def decode(file_path: PathLike):
+    with open(file_path, "rb") as f:
+        (
+            magic_bytes,
+            width,
+            height,
+            color_channels,
+            color_space,
+        ) = QOI_HEADER_STRUCT.unpack(f.read(QOI_HEADER_STRUCT.size))
+
+        if magic_bytes != QOI_MAGIC_BYTES:
+            raise QoiHeaderError(
+                f"Invalid file header. Expected {QOI_MAGIC_BYTES} but got {magic_bytes}"
+            )
+        prev_color = QOI_FIRST_COLOR
+        for byte in f.read(1):
+            if byte == QOI_OP_RGB:
+                color = Color(*struct.unpack("BBB", f.read(3)), prev_color.a)
+                yield None
+                continue
+
+            if byte == QOI_OP_RGBA:
+                color = Color(*struct.unpack("BBBB", f.read(4)))
+                yield None
+            print()
+        print()
 
 
 def encode():
@@ -107,8 +129,9 @@ def encode():
     yield QOI_END_MARKER
 
 
-with open("output.qoi", "wb") as f:
-    for bytes in encode():
-        f.write(bytes)
+# with open("output.qoi", "wb") as f:
+#     for bytes in encode():
+#         f.write(bytes)
 
+decoded = list(decode("output.qoi"))
 # print()

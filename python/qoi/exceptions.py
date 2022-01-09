@@ -1,0 +1,2 @@
+class QoiHeaderError(Exception):
+    pass
